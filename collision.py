@@ -1,22 +1,16 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from numba import njit, prange
-
-# ==============================================================
-#               FAST SIMULATION (Numba Accelerated)
-# ==============================================================
-
+#FAST SIMULATION (Numba Accelerated)
 @njit(parallel=True)
 def simulate_numba(positions, velocities, masses, bounds, dt, steps, shape_code, radius):
     n = positions.shape[0]
     traj = np.zeros((steps, n, 2))
     collisions = np.zeros((steps, n, 2))
     flags = np.zeros((steps, n))
-
     for t in prange(steps):
         # Move particles
         positions += velocities * dt
-
         # Boundary reflections
         for i in range(n):
             if shape_code == 0:  # rectangle
@@ -59,7 +53,6 @@ def simulate_numba(positions, velocities, masses, bounds, dt, steps, shape_code,
                         velocities[i,0] *= -1
                         positions[i,0] = left_x
                         flags[t,i] = 1
-
         # Inter-particle collisions (elastic)
         for i in range(n):
             for j in range(i+1, n):
@@ -76,22 +69,14 @@ def simulate_numba(positions, velocities, masses, bounds, dt, steps, shape_code,
                     velocities[j,1] += p * masses[i] * ny
                     flags[t,i] = 1
                     flags[t,j] = 1
-
         traj[t,:,:] = positions
         for i in range(n):
             if flags[t,i] == 1:
                 collisions[t,i,:] = positions[i,:]
-
     return traj, collisions, flags
-
-
-# ==============================================================
-#                   MAIN INTERACTIVE SCRIPT
-# ==============================================================
-
+#MAIN INTERACTIVE SCRIPT
 def run_simulation():
     print("\n=== PARTICLE COLLISION SIMULATION ===")
-
     # ----- Shape Selection -----
     shape = input("Choose boundary shape (rectangle / circle / triangle): ").strip().lower()
     if shape == "rectangle":
@@ -113,13 +98,11 @@ def run_simulation():
         bounds = np.array([[-radius, radius], [0, h]])
     else:
         raise ValueError("Invalid shape entered.")
-
     # ----- Simulation Parameters -----
     n = int(input("Enter number of particles: "))
     duration = float(input("Enter simulation duration (seconds): "))
     dt = float(input("Enter time step (e.g., 0.01): "))
     steps = int(duration / dt)
-
     # ----- Starting Positions -----
     same_start = input("Do all points start from the same position? (yes/no): ").strip().lower()
     if same_start == "yes":
@@ -135,13 +118,10 @@ def run_simulation():
             theta = np.random.uniform(0, 2*np.pi, n)
             r = radius * np.sqrt(np.random.uniform(0, 1, n))
             positions = np.stack((r*np.cos(theta), r*np.sin(theta)), axis=1)
-
     # ----- Velocities -----
     angles = np.random.uniform(0, 2*np.pi, n)
     speeds = np.ones(n)
     velocities = np.stack((np.cos(angles), np.sin(angles)), axis=1) * speeds[:, None]
-
-
     # ----- Masses -----
     mode = input("Mass assignment (same/random/custom): ").strip().lower()
     if mode == "same":
@@ -154,7 +134,6 @@ def run_simulation():
         print("Enter masses for each particle:")
         for i in range(n):
             masses[i] = float(input(f"Mass {i+1}: "))
-
     # ----- Collision Visualization -----
     show_col = input("Show collision points? (yes/no): ").strip().lower() == "yes"
     if show_col:
@@ -163,16 +142,10 @@ def run_simulation():
     else:
         col_color = "none"
         col_size = 0
-
-    # ==============================================================
-    #               Run the Simulation (Numba Accelerated)
-    # ==============================================================
+    # Run the Simulation (Numba Accelerated)
     traj, col, flags = simulate_numba(positions.copy(), velocities.copy(),
                                       masses, bounds, dt, steps, shape_code, radius)
-
-    # ==============================================================
-    #                     Visualization
-    # ==============================================================
+    # Visualization
     plt.figure(figsize=(8, 8))
     if shape_code == 0:
         plt.xlim(bounds[0])
@@ -180,14 +153,12 @@ def run_simulation():
     else:
         plt.xlim(-radius*1.1, radius*1.1)
         plt.ylim(-radius*1.1, radius*1.1)
-
     for i in range(n):
         plt.plot(traj[:, i, 0], traj[:, i, 1], lw=0.6)
         if show_col:
             idx = np.where(flags[:, i] == 1)[0]
             plt.scatter(col[idx, i, 0], col[idx, i, 1],
                         s=col_size, color=col_color, alpha=0.7)
-
     plt.title(f"Numba Accelerated Simulation ({shape.capitalize()} boundary)")
     plt.xlabel("X")
     plt.ylabel("Y")
@@ -195,7 +166,6 @@ def run_simulation():
     plt.gca().set_aspect('equal')
     plt.tight_layout()
     plt.show()
-
     # Heatmap of occupancy
     all_xy = traj.reshape(-1, 2)
     heat, xedges, yedges = np.histogram2d(all_xy[:, 0], all_xy[:, 1], bins=100)
@@ -206,11 +176,6 @@ def run_simulation():
     plt.ylabel("Y")
     plt.colorbar(label="Frequency")
     plt.show()
-
-
-# ==============================================================
-#                     Run Everything
-# ==============================================================
-
+#Run Everything
 if __name__ == "__main__":
     run_simulation()
