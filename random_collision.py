@@ -1,24 +1,18 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
-# ==============================
 # USER INPUTS
-# ==============================
 shape = input("Enter boundary shape ('circle', 'rectangle', or 'triangle'): ").strip().lower()
-
 # --- Define boundary ---
 if shape == 'circle':
     radius = float(input("Enter circle radius (e.g., 5): "))
     center = np.array([0.0, 0.0])
     bounds = {'shape': 'circle', 'radius': radius, 'center': center}
-
 elif shape == 'rectangle':
     x_min = float(input("Enter rectangle min X (e.g., -5): "))
     x_max = float(input("Enter rectangle max X (e.g., 5): "))
     y_min = float(input("Enter rectangle min Y (e.g., -5): "))
     y_max = float(input("Enter rectangle max Y (e.g., 5): "))
     bounds = {'shape': 'rectangle', 'x': (x_min, x_max), 'y': (y_min, y_max)}
-
 elif shape == 'triangle':
     print("Enter triangle vertices (x1 y1), (x2 y2), (x3 y3):")
     v1 = np.array(list(map(float, input("Vertex 1 (e.g., 0 0): ").split())))
@@ -28,7 +22,6 @@ elif shape == 'triangle':
     bounds = {'shape': 'triangle', 'vertices': verts}
 else:
     raise ValueError("Invalid shape. Choose 'circle', 'rectangle', or 'triangle'.")
-
 # --- Simulation parameters ---
 num_points = int(input("Enter number of points (e.g., 3): "))
 duration = float(input("Enter simulation duration in seconds (e.g., 50): "))
@@ -36,14 +29,11 @@ dt = 0.01        # time step
 speed = float(input("Enter base speed (e.g., 1.0): "))
 num_steps = int(duration / dt)
 arrow_interval = max(1, int(1 / dt))  # every 1s (at least 1)
-
 # --- Particle properties ---
 masses = np.array([float(input(f"Enter mass for point {i+1} (e.g., 1.0): ")) for i in range(num_points)])
-
 # --- Start positions ---
 same_start = input("Should all points start at the same position? (yes/no): ").strip().lower()
 np.random.seed(0)
-
 def point_in_triangle(pt, v1, v2, v3):
     # barycentric coordinates
     denom = (v2[1]-v3[1])*(v1[0]-v3[0]) + (v3[0]-v2[0])*(v1[1]-v3[1])
@@ -51,14 +41,12 @@ def point_in_triangle(pt, v1, v2, v3):
     b = ((v3[1]-v1[1])*(pt[0]-v3[0]) + (v1[0]-v3[0])*(pt[1]-v3[1])) / denom
     c = 1 - a - b
     return (a >= 0) and (b >= 0) and (c >= 0)
-
 def nearest_point_on_segment(p, a, b):
     # returns nearest point on segment ab to p
     ab = b - a
     t = np.dot(p - a, ab) / (np.dot(ab, ab) + 1e-12)
     t_clamped = max(0.0, min(1.0, t))
     return a + ab * t_clamped
-
 # Initialize positions
 if same_start == "yes":
     x0 = float(input("Enter X coordinate of start position (e.g., 0): "))
@@ -94,16 +82,13 @@ else:
             if point_in_triangle(p, v1, v2, v3):
                 positions.append(p)
         positions = np.array(positions)
-
 # --- Initialize velocities ---
 angles = np.random.uniform(0, 2 * np.pi, num_points)
 velocities = np.stack((np.cos(angles), np.sin(angles)), axis=1) * speed
-
 # --- Storage ---
 trajectories = np.zeros((num_points, num_steps, 2))
 vel_history = np.zeros((num_points, num_steps, 2))
 collision_events = []
-
 # Precompute triangle edge normals (pointing outward) if triangle
 if bounds['shape'] == 'triangle':
     v1, v2, v3 = bounds['vertices']
@@ -125,15 +110,10 @@ if bounds['shape'] == 'triangle':
         edge_normals.append((a, b, n))  # store edge endpoints and outward normal
 else:
     edge_normals = None
-
-# ==============================
 # SIMULATION LOOP
-# ==============================
 collision_threshold = 0.5  # Increased collision threshold
-
 for t in range(num_steps):
     positions += velocities * dt
-
     # --- Boundary reflections ---
     for i in range(num_points):
         if bounds['shape'] == 'rectangle':
@@ -144,7 +124,6 @@ for t in range(num_steps):
                 elif positions[i, dim] > bounds[axis][1]:
                     positions[i, dim] = bounds[axis][1]
                     velocities[i, dim] *= -1
-
         elif bounds['shape'] == 'circle':
             vec = positions[i] - bounds['center']
             dist = np.linalg.norm(vec)
@@ -152,7 +131,6 @@ for t in range(num_steps):
                 normal = vec / (dist + 1e-12)
                 velocities[i] = velocities[i] - 2 * np.dot(velocities[i], normal) * normal
                 positions[i] = bounds['center'] + normal * bounds['radius']
-
         elif bounds['shape'] == 'triangle':
             # check each edge; if outside (positive signed distance), reflect and push back in
             pushed = False
@@ -186,7 +164,6 @@ for t in range(num_steps):
                     normal_unit = normal_vec / norm_len
                 velocities[i] = velocities[i] - 2 * np.dot(velocities[i], normal_unit) * normal_unit
                 positions[i] = nearest + 1e-6 * normal_unit  # place just inside
-
     # --- Inter-particle collisions (mass-dependent elastic) ---
     for i in range(num_points):
         for j in range(i + 1, num_points):
@@ -205,17 +182,11 @@ for t in range(num_steps):
                     # store collision time step and point index for both particles
                     collision_events.append((t, i))
                     collision_events.append((t, j))
-
-
     trajectories[:, t, :] = positions
     vel_history[:, t, :] = velocities
-
-# ==============================
 # HEATMAP
-# ==============================
 sampled_points = trajectories[:, ::arrow_interval, :].reshape(-1, 2)
 bins = 120
-
 # define plotting range: adapt to bounds
 if bounds['shape'] == 'circle':
     limit = bounds['radius'] * 1.1
@@ -226,19 +197,13 @@ else: # triangle
     bbox_min = np.min(bounds['vertices'], axis=0) - 1.0
     bbox_max = np.max(bounds['vertices'], axis=0) + 1.0
     range_limits = [[bbox_min[0], bbox_max[0]], [bbox_min[1], bbox_max[1]]]
-
-
 heatmap, xedges, yedges = np.histogram2d(sampled_points[:, 0], sampled_points[:, 1],
                                          bins=bins, range=range_limits)
 heatmap = heatmap.T / (np.max(heatmap) + 1e-12)
-
-# ==============================
 # PLOTTING
-# ==============================
 plt.figure(figsize=(9, 9))
 extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
 plt.imshow(heatmap, extent=extent, origin='lower', cmap='plasma', alpha=0.45)
-
 # --- Boundary ---
 if bounds['shape'] == 'circle':
     circle = plt.Circle(bounds['center'], bounds['radius'], color='k', fill=False, linestyle='--', label='Boundary')
@@ -251,7 +216,6 @@ elif bounds['shape'] == 'rectangle':
 else:  # triangle
     tri = np.vstack([bounds['vertices'], bounds['vertices'][0]])
     plt.plot(tri[:, 0], tri[:, 1], 'k--', label='Boundary')
-
 # --- Trajectories & Arrows ---
 colors = plt.cm.tab10(np.linspace(0, 1, num_points))
 for i in range(num_points):
@@ -261,18 +225,14 @@ for i in range(num_points):
         x, y = trajectories[i, t, :]
         u, v = vel_history[i, t, :]
         plt.arrow(x, y, u * 0.45, v * 0.45, head_width=0.12, head_length=0.18, fc=colors[i], ec=colors[i], alpha=0.9)
-
 # --- Highlight collisions on trajectories ---
 if len(collision_events) > 0:
     # Filter out duplicate collision events for a cleaner plot
     unique_collision_events = list(set(collision_events))
-
     # Plot markers on trajectories at collision points
     for t_step, p_index in unique_collision_events:
         plt.plot(trajectories[p_index, t_step, 0], trajectories[p_index, t_step, 1],
                  marker='o', color='red', markersize=8, markeredgecolor='black', zorder=5)
-
-
 plt.title(f"{bounds['shape'].capitalize()} Boundary Simulation with Elastic Collisions\nHeatmap + Trajectories + Collision Highlights")
 plt.xlabel("X Position")
 plt.ylabel("Y Position")
